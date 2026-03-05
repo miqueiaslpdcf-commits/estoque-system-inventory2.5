@@ -154,7 +154,7 @@ style="width:100%;height:10%;font-size:20px">
 </div>
 
 <script>
-const url="https://script.google.com/macros/s/AKfycbz4BoAqoOw-5FarrIlgYaKN1OScZDInfrIPNWjsWkisIfbMYrEX7Vw7eG07XZ4L_Z_n/exec";
+const url="https://script.google.com/macros/s/AKfycbwZMQJEOn9kysXVl5cGYjbRXk22dhLnOQ8zZx_BvyyBEdIZS5_uDzqNI8XUVk7GgiQ/exec";
 let produtos=[];
 let contagensPendentes = [];
 
@@ -201,7 +201,15 @@ function cadastrar() {
 
   fetch(url, {
     method: "POST",
-    body: JSON.stringify({ tipo: "cadastro", ean, produto, estoque, cozinha, cafe })
+    body: JSON.stringify({
+  tipo: "cadastro",
+  ean: ean,
+  produto: produto,
+  estoque: estoque,
+  cozinha: cozinha,
+  cafe: cafe,
+  minimo: minimo
+  })
   })
   .then(res => res.text())
   .then(resposta => {
@@ -355,8 +363,14 @@ function carregarProdutos() {
 
 function buscarProduto(){
 
-  let termo = document.getElementById("buscaProduto").value.toLowerCase();
+  let termo = document.getElementById("buscaProduto").value.toLowerCase().trim();
   let t = document.getElementById("tabela");
+
+  // se estiver vazio mostra tudo novamente
+  if(termo === ""){
+    atualizar();
+    return;
+  }
 
   t.innerHTML = "";
 
@@ -481,6 +495,8 @@ function atualizarListaCompra(){
 
       let comprar = p.minimo - total;
 
+      if(comprar < 0) comprar = 0;
+
       tabela.innerHTML += `
       <tr>
         <td>${p.produto}</td>
@@ -489,9 +505,11 @@ function atualizarListaCompra(){
         <td>${comprar}</td>
       </tr>
       `;
+
     }
 
   });
+
 }
 function gerarPedido(){
 
