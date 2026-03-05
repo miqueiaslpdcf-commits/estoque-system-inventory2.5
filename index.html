@@ -153,10 +153,6 @@ style="width:100%;height:10%;font-size:20px">
 
 </div>
 
-<audio id="bip">
-<source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
-</audio>
-
 <script>
 const url="https://script.google.com/macros/s/AKfycbz4BoAqoOw-5FarrIlgYaKN1OScZDInfrIPNWjsWkisIfbMYrEX7Vw7eG07XZ4L_Z_n/exec";
 let produtos=[];
@@ -567,8 +563,6 @@ Html5QrcodeSupportedFormats.CODE_39
 },
 (decodedText) => {
 document.getElementById(campoScanner).value = decodedText;
-// 🔊 tocar bip
-document.getElementById("bip").play();
 pararScanner();
 },
 (errorMessage) => {
