@@ -2,11 +2,22 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>ESTOQUE SYSTEM - INVENTORY</title>
+<title>📦ESTOQUE SYSTEM - INVENTORY</title>
 <style>
 body{font-family:Arial;margin:0;background:#f1f5f9}
 header{background:#0f172a;color:white;padding:15px;text-align:center}
 nav{display:flex;background:#1e293b}
+
+/* ALERTA DE ESTOQUE BAIXO */
+.estoque-baixo{
+background:#fee2e2;
+border-left:6px solid #ef4444;
+color:#991b1b;
+font-weight:600;
+padding-left:8px;
+}
+
+
 nav button{flex:1;padding:12px;border:none;background:#1e293b;color:white;cursor:pointer}
 nav button:hover{background:#334155}
 section{display:none;padding:20px}
@@ -23,20 +34,57 @@ border:1px solid #ccc;
 border-radius:6px;
 }
 
+/* CAIXA DO NOME DO PRODUTO */
+#produtoEntrada,
+#produtoMov,
+#produtoContagem{
+width: 300px;
+font-size:12px;
+padding:10px;
+}
+
+.acoes button{
+font-size:20px;
+padding:6px 10px;
+margin:2px;
+cursor:pointer;
+border:none;
+background:#e2e8f0;
+border-radius:6px;
+}
+
+.acoes button:hover{
+background:#cbd5f5;
+}
+
 </style>
 <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
 
-<header><h2>ESTOQUE SYSTEM - INVENTORY</h2></header>
+<header><h2>📦ESTOQUE SYSTEM - INVENTORY</h2></header>
 
 <nav>
 <button onclick="abrir('geral')">Estoque Geral</button>
 <button onclick="abrir('cadastro')">Cadastro</button>
 <button onclick="abrir('mov')">Movimentação</button>
 <button onclick="abrir('cont')">Contagem</button>
+<button onclick="abrir('entrada')">📦 Recebimentos</button>
 <button onclick="enviarWhatsApp()">📱 Enviar pedido no WhatsApp</button>
 </nav>
+
+<section id="entrada">
+<h3>📦 Entrada de Nota Fiscal</h3>
+<input id="eanEntrada" placeholder="EAN / Código de barras" onkeyup="buscarProdutoEntrada()">
+<input id="produtoEntrada" placeholder="Produto" readonly>
+<button onclick="iniciarScanner('eanEntrada')">📷 Escanear</button>
+<div id="msgEntrada" style="margin-top:5px;height:20px"></div>
+<input type="number" id="qtdEntrada" placeholder="Quantidade">
+<input id="fornecedor" placeholder="Fornecedor">
+<input id="nota" placeholder="Número da Nota Fiscal">
+<br>
+<button onclick="registrarEntrada()">Registrar Entrada</button>
+</section>
 
 <section id="geral" class="active">
 <h3>Estoque Geral</h3>
@@ -91,7 +139,8 @@ border-radius:6px;
 
 <section id="mov">
 <h3>Movimentação</h3>
-<input id="movEan" placeholder="EAN13 do Produto">
+<input id="movEan" placeholder="EAN13 do Produto" onkeyup="buscarProdutoMov()">
+<input id="produtoMov" placeholder="Produto" readonly>
 <button onclick="iniciarScanner('movEan')">📷 Escanear</button>
 <div id="msgMov" style="margin-top:5px;height:20px"></div>
 <select id="origem">
@@ -110,7 +159,9 @@ border-radius:6px;
 
 <section id="cont">
 <h3>Contagem Noturna</h3>
-EAN: <input id="contEan" placeholder="EAN13 do Produto">
+EAN: <input id="contEan" placeholder="EAN13 do Produto" onkeyup="buscarProdutoContagem()">
+Produto: <input id="produtoContagem" readonly placeholder="Produto">
+
 <button onclick="iniciarScanner('contEan')">📷 Escanear</button>
 <div id="msgCont" style="margin-top:5px;height:20px"></div>
 Setor:
@@ -127,7 +178,7 @@ Quantidade: <input type="number" id="contQtd" placeholder="Quantidade Contada">
 <h4>Contagens Pendentes:</h4>
 <table id="tabelaContagens">
 <thead>
-<tr><th>EAN</th><th>Setor</th><th>Qtd</th></tr>
+<tr><th>EAN</th><th>Setor</th><th>Qtd</th><th>Ações</th></tr>
 </thead>
 <tbody></tbody>
 </table>
@@ -154,7 +205,7 @@ style="width:100%;height:10%;font-size:20px">
 </div>
 
 <script>
-const url="https://script.google.com/macros/s/AKfycbyiptlwitplKzQzSpLCCXyXkP53DNWtGtGk8emuGVi98HVnQTgOx4OM_i7zAxfJh1uo/exec";
+const url="https://script.google.com/macros/s/AKfycbxQ6bz4LjT5TVsTE0uZ65vlr8vC50YmWFVj2NsDNcwudlSOdqOa8azeFiqU1hjTxI9c/exec";
 let produtos=[];
 let contagensPendentes = [];
 
@@ -318,13 +369,14 @@ function atualizar(){
     let alerta = "";
     let cor = "";
 
-    if(total <= p.minimo){
-      alerta = "⚠ ESTOQUE BAIXO";
-      cor = "style='background:#fecaca'";
-    }
+  let classe = "";
+
+  if(total <= p.minimo){
+  classe = "class='estoque-baixo'";
+  }
 
     t.innerHTML+=`
-    <tr ${cor}>
+    <tr ${classe}>
       <td>${p.ean}</td>
       <td>${p.produto}</td>
       <td>${p.estoque}</td>
@@ -437,15 +489,51 @@ function adicionarContagem() {
   atualizarTabelaContagens();
 }
 function atualizarTabelaContagens() {
+
   let tbody = document.querySelector("#tabelaContagens tbody");
   tbody.innerHTML = "";
-  contagensPendentes.forEach(c => {
-    tbody.innerHTML += `<tr>
+
+  contagensPendentes.forEach((c, index) => {
+
+    tbody.innerHTML += `
+    <tr>
       <td>${c.ean}</td>
       <td>${c.setor}</td>
       <td>${c.quantidade}</td>
+      <td class="acoes">
+        <button onclick="editarContagem(${index})">✏️</button>
+        <button onclick="removerContagem(${index})">🗑</button>
+      </td>
     </tr>`;
+
   });
+}
+
+function removerContagem(index){
+
+  contagensPendentes.splice(index,1);
+
+  atualizarTabelaContagens();
+
+  mostrarMsg("msgCont","Item removido!");
+
+}
+function editarContagem(index){
+
+  let item = contagensPendentes[index];
+
+  document.getElementById("contEan").value = item.ean;
+  document.getElementById("contSetor").value = item.setor;
+  document.getElementById("contQtd").value = item.quantidade;
+
+  contagensPendentes.splice(index,1);
+
+  atualizarTabelaContagens();
+
+  buscarProdutoContagem();
+
+  mostrarMsg("msgCont","Item carregado para edição!");
+
 }
 function enviarContagens() {
   if(contagensPendentes.length === 0){
@@ -581,6 +669,18 @@ Html5QrcodeSupportedFormats.CODE_39
 },
 (decodedText) => {
 document.getElementById(campoScanner).value = decodedText;
+
+if(campoScanner === "eanEntrada")
+{
+buscarProdutoEntrada();
+}
+if(campoScanner === "contEan")
+{
+buscarProdutoContagem();
+}
+if(campoScanner === "movEan"){
+buscarProdutoMov();
+}
 pararScanner();
 },
 (errorMessage) => {
@@ -597,9 +697,83 @@ scanner.clear();
 }
 
 document.getElementById("scanner").style.display = "none";
+}
+// =======================
+// Entrada de nota fiscal
+// =======================
 
+function registrarEntrada()
+{
+let ean = document.getElementById("eanEntrada").value.trim();
+let quantidade = parseInt(document.getElementById("qtdEntrada").value);
+let fornecedor = document.getElementById("fornecedor").value.trim();
+let nota = document.getElementById("nota").value.trim();
+
+if(!ean || isNaN(quantidade) || quantidade <= 0){
+mostrarMsg("msgEntrada","Informe EAN e quantidade válidos!", false);
+return;
 }
 
+fetch(url,{
+method:"POST",
+body: JSON.stringify({
+tipo:"entrada",
+ean:ean,
+quantidade:quantidade,
+fornecedor:fornecedor,
+nota:nota
+})
+})
+.then(res=>res.text())
+.then(resposta=>{
+
+if(resposta=="OK"){
+
+mostrarMsg("msgEntrada","Entrada registrada!");
+
+document.getElementById("eanEntrada").value="";
+document.getElementById("qtdEntrada").value="";
+document.getElementById("fornecedor").value="";
+document.getElementById("nota").value="";
+
+carregarProdutos();
+}else{
+mostrarMsg("msgEntrada","Produto não encontrado!", false);
+}
+});
+}
+
+function buscarProdutoEntrada()
+{
+let ean = document.getElementById("eanEntrada").value.trim();
+let produto = produtos.find(p => p.ean == ean);
+if(produto){
+document.getElementById("produtoEntrada").value = produto.produto;
+}else{
+document.getElementById("produtoEntrada").value = "";
+}
+}
+
+function buscarProdutoContagem()
+{
+let ean = document.getElementById("contEan").value.trim();
+let produto = produtos.find(p => p.ean == ean);
+if(produto){
+document.getElementById("produtoContagem").value = produto.produto;
+}else{
+document.getElementById("produtoContagem").value = "";
+}
+}
+function buscarProdutoMov()
+{
+let ean = document.getElementById("movEan").value.trim();
+let produto = produtos.find(p => p.ean == ean);
+if(produto){
+document.getElementById("produtoMov").value = produto.produto;
+}else{
+document.getElementById("produtoMov").value = "";
+}
+}
 
 window.onload = carregarProdutos;
 
@@ -608,4 +782,3 @@ window.onload = carregarProdutos;
 
 </body>
 </html>
-
